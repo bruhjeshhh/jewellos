@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Necklace → Earring Matcher</title>
+<style>
+  :root { --gold: #a67c00; --bg: #faf7f2; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    margin: 0;
+    padding: 32px 24px 64px;
+    color: #2b2b2b;
+  }
+  h1 { text-align: center; font-weight: 600; margin-bottom: 4px; }
+  p.subtitle { text-align: center; color: #777; margin-top: 0; margin-bottom: 32px; }
+  .section-label { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: #888; margin: 24px 0 10px; }
+
+  .necklace-grid, .earring-grid {
+    display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
+  }
+  .card {
+    background: white; border-radius: 12px; padding: 10px; width: 150px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08); cursor: pointer;
+    border: 2px solid transparent; transition: transform .12s, border-color .12s;
+    text-align: center;
+  }
+  .card:hover { transform: translateY(-3px); }
+  .card.selected { border-color: var(--gold); box-shadow: 0 4px 14px rgba(166,124,0,.25); }
+  .card img { width: 100%; height: 130px; object-fit: cover; border-radius: 8px; }
+  .card .id { font-size: 12px; margin-top: 6px; color: #555; }
+  .card .score { font-size: 12px; margin-top: 2px; font-weight: 600; color: var(--gold); }
+
+  .earring-grid .card { cursor: default; }
+  .earring-grid .card:hover { transform: none; }
+
+  #matches-wrap { min-height: 40px; }
+  .empty-hint { text-align: center; color: #999; padding: 24px 0; }
+  .loading { text-align: center; color: #999; padding: 24px 0; }
+
+  .rank-badge {
+    display: inline-block; background: var(--gold); color: white; font-size: 11px;
+    padding: 1px 7px; border-radius: 10px; margin-bottom: 4px;
+  }
+  .breakdown { font-size: 10px; color: #999; }
+</style>
+</head>
+<body>
+  <h1>Necklace → Matching Earrings</h1>
+  <p class="subtitle">Pick a necklace. The engine returns the closest-matching earrings from the inventory by visual similarity.</p>
+
+  <div class="section-label">1. Select a necklace</div>
+  <div class="necklace-grid" id="necklace-grid">
+    {% for n in necklaces %}
+    <div class="card" data-id="{{ n.id }}" onclick="selectNecklace('{{ n.id }}', this)">
+      <img src="{{ url_for('static', filename='images/' + n.image_file) }}" alt="{{ n.id }}">
+      <div class="id">{{ n.id }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="section-label">2. Recommended earrings</div>
+  <div id="matches-wrap">
+    <div class="empty-hint">Select a necklace above to see matches.</div>
+  </div>
+
+<script>
+async function selectNecklace(id, el) {
+  document.querySelectorAll('#necklace-grid .card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+
+  const wrap = document.getElementById('matches-wrap');
+  wrap.innerHTML = '<div class="loading">Finding matches…</div>';
+
+  const res = await fetch(`/api/recommend/${id}?top_k=3`);
+  const data = await res.json();
+
+  wrap.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'earring-grid';
+  data.matches.forEach((m, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <span class="rank-badge">#${i + 1}</span>
+      <img src="/static/images/${m.image_file}" alt="${m.id}">
+      <div class="id">${m.id}</div>
+      <div class="score">${(m.score * 100).toFixed(1)}% match</div>
+      <div class="breakdown">color ${(m.color_score*100).toFixed(0)}% · shape ${(m.shape_score*100).toFixed(0)}%</div>
+    `;
+    grid.appendChild(card);
+  });
+  wrap.appendChild(grid);
+}
+</script>
+</body>
+</html>
