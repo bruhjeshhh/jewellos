@@ -18,6 +18,9 @@ from matcher import get_index
 
 app = Flask(__name__)
 
+# Pre-warm the index when running under gunicorn so the first request isn't slow.
+get_index()
+
 
 @app.route("/")
 def index():
@@ -44,7 +47,4 @@ def api_recommend(necklace_id):
 
 
 if __name__ == "__main__":
-    # Pre-warm the index (computes features for all 20 images once) so the
-    # first request isn't slow.
-    get_index()
     app.run(host="0.0.0.0", port=5000, debug=True)
